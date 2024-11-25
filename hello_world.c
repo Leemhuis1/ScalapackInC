@@ -57,8 +57,8 @@ int main(int argc, char** argv){
 */
 
 	double *A = malloc( 4 *sizeof(double));
-	double *B = malloc( 1 *sizeof(double));
-	double *X = malloc( 1 *sizeof(double));
+	double *B = malloc( 2 *sizeof(double));
+	double *X = malloc( 2 *sizeof(double));
 
 	if (process_rank == 0){
 //		printf("This is process 0 from inside if - clause\n");
@@ -69,7 +69,9 @@ int main(int argc, char** argv){
 		A[3] = 76;
 
 		B[0] = 5;
+		B[1] = 10;
 		X[0] = 0.4695e-3;
+		X[1] = 0.9674e-3;
 	} else if (process_rank == 1){
 //		printf("This is process 1 from inside if - clause\n");
 		A[0] = 75;
@@ -77,8 +79,10 @@ int main(int argc, char** argv){
 		A[2] = 132;
 		A[3] = 90;
 
-		B[0] = 10;
-		X[0] = 0.9674e-3;
+		B[0] = 5;
+		B[1] = 10;
+		X[0] = 0.4695e-3;
+		X[1] = 0.9674e-3;
 	} else if (process_rank == 2){
 		A[0] = 146;
 		A[1] = 132;
@@ -86,22 +90,26 @@ int main(int argc, char** argv){
 		A[3] = 139;
 
 		B[0] = 8;
+		B[1] = 10;
 		X[0] = 0.7471e-3;
+		X[1] = 0.9691e-3;
 	} else if (process_rank == 3){
 		A[0] = 76;
 		A[1] = 90;
 		A[2] = 138;
 		A[3] = 10086;
 
-		B[0] = 10;
-		X[0] = 0.9691e-3;
+		B[0] = 8;
+		B[1] = 10;		
+		X[0] = 0.7471e-3;
+		X[1] = 0.9691e-3;
 	}    
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	if (process_rank == 0) printf("A = \t%7.1f\t%7.1f\t%7.1f\t%7.1f\n", A[0], A[1], A[2], A[0]);
+	if (process_rank == 0) printf("A = \t%7.1f\t%7.1f\t%7.1f\t%7.1f\n", A[0], A[1], A[2], A[3]);
 	int i;
 	for (i = 1; i < 4; i++){
-		if (process_rank == i) printf("\t%7.1f\t%7.1f\t%7.1f\t%7.1f\n", A[0], A[1], A[2], A[0]);
+		if (process_rank == i) printf("\t%7.1f\t%7.1f\t%7.1f\t%7.1f\n", A[0], A[1], A[2], A[3]);
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
 
