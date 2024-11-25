@@ -27,8 +27,8 @@ int main(int argc, char** argv){
 
 	int n = 4;       // (Global) Matrix size
 
-	int nprow = 4;   // Number of proc - rows
-	int npcol = 1;   // Number of proc - cols
+	int nprow = 2;   // Number of proc - rows
+	int npcol = 2;   // Number of proc - cols
 //	char uplo='L';   // Matrix is lower triangular
 	char layout='R'; // Block cyclic, Row major processor mapping
 
@@ -65,8 +65,8 @@ int main(int argc, char** argv){
 		printf("Size of int: %d\n", sizeof(int));
 		A[0] = 10105;
 		A[1] = 75;
-		A[2] = 146;
-		A[3] = 76;
+		A[2] = 75;
+		A[3] = 10108;
 
 		B[0] = 5;
 		B[1] = 10;
@@ -74,8 +74,8 @@ int main(int argc, char** argv){
 		X[1] = 0.9674e-3;
 	} else if (process_rank == 1){
 //		printf("This is process 1 from inside if - clause\n");
-		A[0] = 75;
-		A[1] = 10108;
+		A[0] = 146;
+		A[1] = 76;
 		A[2] = 132;
 		A[3] = 90;
 
@@ -86,16 +86,16 @@ int main(int argc, char** argv){
 	} else if (process_rank == 2){
 		A[0] = 146;
 		A[1] = 132;
-		A[2] = 10266;
-		A[3] = 139;
+		A[2] = 76;
+		A[3] = 90;
 
 		B[0] = 8;
 		B[1] = 10;
 		X[0] = 0.7471e-3;
 		X[1] = 0.9691e-3;
 	} else if (process_rank == 3){
-		A[0] = 76;
-		A[1] = 90;
+		A[0] = 10266;
+		A[1] = 138;
 		A[2] = 138;
 		A[3] = 10086;
 
@@ -124,8 +124,8 @@ int main(int argc, char** argv){
  	blacs_gridinfo_(&ictxt, &nprow, &npcol, &myrow, &mycol ); // Context -> Context grid info (# procs row/col, current procs row/col)
 
     // Compute the size of the local matrices
-	int bsx = 4; //blocksize in X direction
-	int bsy = 1; //blocksize in Y direction
+	int bsx = 2; //blocksize in X direction
+	int bsy = 2; //blocksize in Y direction
 	
 	int numc = numroc_( &n, &bsx, &mycol, &zero, &npcol ); // number of columns stored in each process
 	int numr = numroc_( &n, &bsy, &myrow, &zero, &nprow ); // number of rows stored in each process
@@ -162,14 +162,19 @@ int main(int argc, char** argv){
 
 
 	//create a desriptor for B
+	
+    // Compute the size of the local matrices
+	int bsxB = 1; //blocksize in X direction
+	int bsyB = 2; //blocksize in Y direction
+	
+	int numcB = numroc_( &n, &bsxB, &mycol, &zero, &npcol ); // number of columns stored in each process
+	int numrB = numroc_( &n, &bsyB, &myrow, &zero, &nprow ); // number of rows stored in each process
 	int descB[9];
-	int numcB = 1;
-	int numrB = 1;
 	int lddB = numcB > 1? numcB : 1; 	//number of local rows in b;
 	
 
-	int bfcB = 1;	//blocking factor - col (blocksize in cols)
-	int bfrB = 1;	//blocking factor - row (blocksize in rows)
+	int bfcB = n / numcB;	//blocking factor - col (blocksize in cols)
+	int bfrB = n / numrB;	//blocking factor - row (blocksize in rows)
 	
 	MPI_Barrier(MPI_COMM_WORLD);
 	for (i = 0; i < 4; i++){
@@ -196,19 +201,22 @@ int main(int argc, char** argv){
 	t0 = MPI_Wtime();
 
 	int nrhs = numcB;	//1;
-	int ia = myrow;
-	int ib = myrow;
-	int ja = mycol; // = 0;
-	int jb = mycol;	// = 0;
+	int ia = (myrow +1)/ 2 +1;
+	int ib = (myrow +1)/ 2 +1;
+	int ja = mycol % 2 +1; // = 0;
+	int jb = 0 +1;	// = 0;
 	int ipiv[4];
 	for (i = 0; i<4; i++) ipiv[i] = i;
 
 	if (process_rank == 0) printf("IPIV done!\n");
 	if (process_rank == 0) printf("Starting PDGESV....\n");
 	MPI_Barrier(MPI_COMM_WORLD);
+	for (i = 0; i < 4; i++){
+		if (process_rank == i) printf("I am process %d, \tia = %d, ja = %d,\tiB = %d, jB = %d\n", process_rank, ia, ja, ib, jb);
+		MPI_Barrier(MPI_COMM_WORLD);
+	}
 
-
-//	n = 2;
+	n = 4;
 	//PDGESV( N, NRHS, A, IA, JA, DESCA, IPIV, B, IB, JB, DESCB, INFO )
 	if (process_rank == 0) printf("n = %d, ipiv: [%d, %d, %d, %d]\n", n, ipiv[0], ipiv[1], ipiv[2], ipiv[3]);
 	pdgesp_( &n, &one, A, &ia, &ja, descA, &zero, B, &ib, &jb, descB, &info);
