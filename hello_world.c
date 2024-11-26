@@ -27,8 +27,8 @@ int main(int argc, char** argv){
 
 	int n = 4;       // (Global) Matrix size
 
-	int nprow = 2;   // Number of proc - rows
-	int npcol = 2;   // Number of proc - cols
+	int nprow = 1;   // Number of proc - rows
+	int npcol = 1;   // Number of proc - cols
 //	char uplo='L';   // Matrix is lower triangular
 	char layout='R'; // Block cyclic, Row major processor mapping
 
@@ -56,22 +56,42 @@ int main(int argc, char** argv){
  *		0.9691
 */
 
-	double *A = malloc( 4 *sizeof(double));
-	double *B = malloc( 2 *sizeof(double));
-	double *X = malloc( 2 *sizeof(double));
+	double *A = malloc( 16 *sizeof(double));
+	double *B = malloc( 4 *sizeof(double));
+	double *X = malloc( 4 *sizeof(double));
 
 	if (process_rank == 0){
 //		printf("This is process 0 from inside if - clause\n");
 		printf("Size of int: %d\n", sizeof(int));
 		A[0] = 10105;
 		A[1] = 75;
-		A[2] = 75;
-		A[3] = 10108;
+		A[2] = 146;
+		A[3] = 76;
+		
+		A[4] = 75;
+		A[5] = 10108;
+		A[6] = 132;
+		A[7] = 90;
+
+		A[8] = 146;
+		A[9] = 132;
+		A[10] = 10266;
+		A[11] = 138;
+		
+		A[12] = 76;
+		A[13] = 90;
+		A[14] = 138;
+		A[15] = 10086;
+
 
 		B[0] = 5;
 		B[1] = 10;
+		B[2] = 8;
+		B[3] = 10;		
 		X[0] = 0.4695e-3;
 		X[1] = 0.9674e-3;
+		X[2] = 0.7471e-3;
+		X[3] = 0.9691e-3;
 	} else if (process_rank == 1){
 //		printf("This is process 1 from inside if - clause\n");
 		A[0] = 146;
@@ -124,8 +144,8 @@ int main(int argc, char** argv){
  	blacs_gridinfo_(&ictxt, &nprow, &npcol, &myrow, &mycol ); // Context -> Context grid info (# procs row/col, current procs row/col)
 
     // Compute the size of the local matrices
-	int bsx = 2; //blocksize in X direction
-	int bsy = 2; //blocksize in Y direction
+	int bsx = 4; //blocksize in X direction
+	int bsy = 4; //blocksize in Y direction
 	
 	int numc = numroc_( &n, &bsx, &mycol, &zero, &npcol ); // number of columns stored in each process
 	int numr = numroc_( &n, &bsy, &myrow, &zero, &nprow ); // number of rows stored in each process
@@ -165,23 +185,24 @@ int main(int argc, char** argv){
 	
     // Compute the size of the local matrices
 	int bsxB = 1; //blocksize in X direction
-	int bsyB = 2; //blocksize in Y direction
+	int bsyB = 4; //blocksize in Y direction
 	
 	int numcB = numroc_( &n, &bsxB, &mycol, &zero, &npcol ); // number of columns stored in each process
 	int numrB = numroc_( &n, &bsyB, &myrow, &zero, &nprow ); // number of rows stored in each process
+	numcB = 1;
 	int descB[9];
-	int lddB = numcB > 1? numcB : 1; 	//number of local rows in b;
+	int lddB = numrB > 1? numrB : 1; 	//number of local rows in b;
 	
 
-	int bfcB = n / numcB;	//blocking factor - col (blocksize in cols)
-	int bfrB = n / numrB;	//blocking factor - row (blocksize in rows)
+	int bfcB = n / numrB;	//blocking factor - col (blocksize in cols)
+	int bfrB = n / numcB;	//blocking factor - row (blocksize in rows)
 	
 	MPI_Barrier(MPI_COMM_WORLD);
 	for (i = 0; i < 4; i++){
-		if (process_rank == i) printf("I am process %d, \tnumrB = %d, numcB = %d,\tbfrB = %d, bfcB = %d\n", process_rank, numrB, numcB, bfrB, bfcB);
+		if (process_rank == i) printf("I am process %d, \tnumrB = %d, numcB = %d,\tbfrB = %d, bfcB = %d, \tlddB = %d\n", process_rank, numrB, numcB, bfrB, bfcB, lddB);
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
-
+//DESCB =            1           0           4           1           4           1           0           0           4
 	descinit_( descB, &n, &one, &bfrB, &bfcB, &zero, &zero, &ictxt, &lddB, &info);
 	if(info != 0) {
 		printf("Error in descinit B, info = %d\n", info);

@@ -1,1 +1,1 @@
-mpirun -n 4 hello_world
+mpirun -n 1 hello_world
