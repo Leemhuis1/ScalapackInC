@@ -23,7 +23,7 @@ int main(int argc, char** argv){
 	MPI_Comm_rank(MPI_COMM_WORLD, &process_rank);
 
 
-	int n = 6;       // (Global) Matrix size
+	int n = 15;       // (Global) Matrix size
 
 	int nprow = 1;   // Number of proc - rows
 	int npcol = 1;   // Number of proc - cols
@@ -75,19 +75,16 @@ int main(int argc, char** argv){
 	int numcA = numroc_( &n, &bsxA, &mycol, &zero, &npcol ); // number of columns stored in each process
 	int numrA = numroc_( &n, &bsyA, &myrow, &zero, &nprow ); // number of rows stored in each process
 
-	int bfrA = n / numrA;
-	int bfcA = n / numcA;
-	
 	//create a descriptor for A
 	int descA[9];
 	int info = 0;
 	int lddA = numcA > 1? numcA : 1;
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	if (process_rank == 0) printf("I am process %d, \tnumrA = %d, numcA = %d, bsyA = %d, bsxA = %d, bfrA = %d, bfcA = %d\n", process_rank, numrA, numcA, bsyA, bsxA, bfrA, bfcA);
+	if (process_rank == 0) printf("I am process %d, \tnumrA = %d, numcA = %d, bsyA = %d, bsxA = %d\n", process_rank, numrA, numcA, bsyA, bsxA);
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	descinit_( descA,  &n, &n, &bfcA, &bfrA, &zero, &zero, &ictxt, &lddA, &info);
+	descinit_( descA,  &n, &n, &bsyA, &bsxA, &zero, &zero, &ictxt, &lddA, &info);
 	//descinit_( descA,  &n, &n, &one, &one, &zero, &zero, &ictxt, &lddA, &info);
 	if(info != 0) {
 		printf("Error in descinit A, info = %d\n", info);
@@ -111,16 +108,16 @@ int main(int argc, char** argv){
 	int descB[9];
 	int lddB = numrB > 1? numrB : 1; 	//number of local rows in b;
 	
-	int bfcB = n / numcB;	//blocking factor - col (blocksize in cols)
-	int bfrB = n / numrB;	//blocking factor - row (blocksize in rows)
+
+
 	
 	MPI_Barrier(MPI_COMM_WORLD);
-	if (process_rank == 0) printf("I am process %d, \tnumrB = %d, numcB = %d, bsyB = %d, bsxB = %d, \tbfrB = %d, bfcB = %d \tlddB = %d\n", process_rank, numrB, numcB, bsyB, bsxB, bfrB, bfcB, lddB);
+	if (process_rank == 0) printf("I am process %d, \tnumrB = %d, numcB = %d, bsyB = %d, bsxB = %d, \tlddB = %d\n", process_rank, numrB, numcB, bsyB, bsxB, lddB);
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 //DESCB =            1           0           4           1           4           1           0           0           4
 //					   use bsxB
-	descinit_( descB, &n, &one, &bfrB, &bfcB, &zero, &zero, &ictxt, &lddB, &info);
+	descinit_( descB, &n, &one, &bsyB, &bsxB, &zero, &zero, &ictxt, &lddB, &info);
 	if(info != 0) {
 		printf("Error in descinit B, info = %d\n", info);
 		exit(1);
@@ -156,7 +153,7 @@ int main(int argc, char** argv){
 
 	//PDGESV( N, NRHS, A, IA, JA, DESCA, IPIV, B, IB, JB, DESCB, INFO )
 	//if (process_rank == 0) printf("n = %d, ipiv: [%d, %d, %d, %d]\n", n, ipiv[0], ipiv[1], ipiv[2], ipiv[3]);
-	pdgesp_( &n, &one, A, &ia, &ja, descA, &zero, B, &ib, &jb, descB, &info);
+	pdgesp_( &n, &one, A, &ia, &ja, descA, ipiv, B, &ib, &jb, descB, &info);
 //	pdgesv_( &n, &one, A, &ia, &ja, descA, ipiv, B, &ib, &jb, descB, &info);
 //	pdgesv_( 4, 1, A, ia, ja, descA, ipiv, B, ib, jb, descB, info);
 	if (info!=0 && process_rank == 0) printf("ERROR DURING PDGESV, info = %d\n", info);
