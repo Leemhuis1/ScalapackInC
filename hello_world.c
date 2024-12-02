@@ -161,8 +161,8 @@ int main(int argc, char** argv){
 	int info = 0;
 	int lddA = numc > 1? numc : 1;
 
-	int bfr = n / numc; //blocking factor columns 	// = 1 ( = bsy)
-	int bfc = n / numr; //blocking factor rows 	// = 4 ( = bsx)
+	int bfc = n / numc; //blocking factor columns 	// = 1 ()
+	int bfr = n / numr; //blocking factor rows 	// = 4 ()
 		
 	MPI_Barrier(MPI_COMM_WORLD);
 	for (i = 0; i < 4; i++){
@@ -194,14 +194,15 @@ int main(int argc, char** argv){
 	int lddB = numrB > 1? numrB : 1; 	//number of local rows in b;
 	
 
-	int bfcB = n / numrB;	//blocking factor - col (blocksize in cols)
-	int bfrB = n / numcB;	//blocking factor - row (blocksize in rows)
+	int bfrB = n / numrB;	//blocking factor - col (blocksize in cols)
+	int bfcB = n / numcB;	//blocking factor - row (blocksize in rows)
 	
 	MPI_Barrier(MPI_COMM_WORLD);
 	for (i = 0; i < 4; i++){
 		if (process_rank == i) printf("I am process %d, \tnumrB = %d, numcB = %d,\tbfrB = %d, bfcB = %d, \tlddB = %d\n", process_rank, numrB, numcB, bfrB, bfcB, lddB);
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
+//DESCB =            1           0           4           1           1           4           0           0           4
 //DESCB =            1           0           4           1           4           1           0           0           4
 	descinit_( descB, &n, &one, &bfrB, &bfcB, &zero, &zero, &ictxt, &lddB, &info);
 	if(info != 0) {
@@ -248,7 +249,13 @@ int main(int argc, char** argv){
 	if (process_rank == 0) printf("PDGESV done!\n");
 	MPI_Barrier(MPI_COMM_WORLD);
 
-
+	
+	if (process_rank == 0){
+	       	printf("Differenz (X - B):\n");
+		for (i = 0; i < 4; i++){
+			printf("%f\n", X[i] - B[i]);
+		}
+	}
 	free(A);
 	free(B);
 	free(X);

@@ -1,10 +1,10 @@
 CC = mpicc
-CFLAGS = -O3  
+# CFLAGS = -O3  
 SCALAPACKLIB = -L/home/wmaisrv1/leemhuis/Downloads/scalapack-2.2.0 
 LAPACKLIB = -llapack
 BLASLIB = -lblas
 
-OBJ = hello_world.o
+OBJ = large_matrix.o hello_world.o
 LIBS = -lm -ldl -lgfortran $(LAPACKLIB) $(BLASLIB) -lscalapack
 
 ############################################################################
@@ -17,15 +17,18 @@ LIBS = -lm -ldl -lgfortran $(LAPACKLIB) $(BLASLIB) -lscalapack
 
 CDEFS = -DAdd_
 
-
+all: hello_world large_matrix
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CDEFS) $(CFLAGS) $(SCALAPACKLIB)
 
-hello_world: $(OBJ)
+large_matrix: large_matrix.o #$(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS) $(SCALAPACKLIB) $(LIBS)
+
+hello_world: hello_world.o #$(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(SCALAPACKLIB) $(LIBS)
 
 .PHONY: clean
 
 clean: 
-	rm -f -v *.o hello_world
+	rm -f -v *.o hello_world large_matrix
