@@ -23,9 +23,9 @@ int main(int argc, char** argv){
 	MPI_Comm_rank(MPI_COMM_WORLD, &process_rank);
 
 
-	int n = 15;       // (Global) Matrix size
+	int n = 8;       // (Global) Matrix size
 
-	int nprow = 1;   // Number of proc - rows
+	int nprow = 4;   // Number of proc - rows
 	int npcol = 1;   // Number of proc - cols
 //	char uplo='L';   // Matrix is lower triangular
 	char layout='R'; // Block cyclic, Row major processor mapping
@@ -44,20 +44,7 @@ int main(int argc, char** argv){
 	double *X = malloc( n *sizeof(double));
 	int *ipiv = malloc( n * sizeof(int));
 
-	int i, j;
-	for (i = 0; i < n; i++){
-		for (j = 0; j < n; j++)
-			A[i*n + j] = i!=j ? 0 : -1; 
-		B[i] = i;
-		X[i] = -i;
-		ipiv[i] = i;
-	}
-
-	if (process_rank == 0){
-//		printf("This is process 0\n");
-		printf("Size of int: %d\n", sizeof(int));
-		printf("allocation and initialization done!\n");
-	}   
+	int i, j, k;
 
 	int zero = 0;
 	int one = 1;
@@ -68,9 +55,78 @@ int main(int argc, char** argv){
 	blacs_gridinit_(&ictxt, &layout, &nprow, &npcol ); // Context -> Initialize the grid
  	blacs_gridinfo_(&ictxt, &nprow, &npcol, &myrow, &mycol ); // Context -> Context grid info (# procs row/col, current procs row/col)
 
+
+	if (process_rank == 0){
+/* 
+ * 1 0 0 0 0 0 0 0
+ * 0 1 0 0 0 0 0 0
+ */
+		for (i = 0; i < n / nprow; i++){
+			for (j = 0; j < n / npcol; j++)
+				A[i*n + j] = i != j ? 0 : -1;
+			B[i] = i + 1;
+			X[i] = -(i + 1);
+			ipiv[i] = i;
+		}
+	} else if (process_rank == 1){
+ /*
+ * 0 0 1 0 0 0 0 0
+ * 0 0 0 1 0 0 0 0
+*/
+		for (i = 0; i < n / nprow; i++){
+			for (j = 0; j < n / npcol; j++)
+				A[i*n + j] = (i + 2) != j ? 0 : -1;
+			B[i] = i + 3;
+			X[i] = -(i + 3);
+			ipiv[i] = i +2;
+		}
+	} else if (process_rank == 2){
+		/*
+ * 0 0 0 0 1 0 0 0
+ * 0 0 0 0 0 1 0 0
+ */
+		for (i = 0; i < n / nprow; i++){
+			for (j = 0; j < n / npcol; j++)
+				A[i*n + j] = (i + 4) != j ? 0 : -1;
+			B[i] = i + 5;
+			X[i] = -(i + 5);
+			ipiv[i] = i + 4;
+		}
+	} else if (process_rank == 3){
+		/*
+ * 0 0 0 0 0 0 1 0 
+ * 0 0 0 0 0 0 0 1
+ */
+		for (i = 0; i < n / nprow; i++){
+			for (j = 0; j < n / npcol; j++)
+				A[i*n + j] = (i + 6) != j ? 0 : -1;
+			B[i] = i + 7;
+			X[i] = -(i + 7);
+			ipiv[i] = i + 6;
+		}
+	}
+	if (process_rank == 0){
+//		printf("This is process 0\n");
+		printf("Size of int: %d\n", sizeof(int));
+		printf("allocation and initialization done!\nMatrix A = \n");
+	}   
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	for (k = 0; k < 4; k++){
+		if (process_rank == k) {
+			for (i = 0; i < n / nprow; i++){
+				for (j = 0; j < n / npcol; j++){
+					printf("%3.0f ", A[i * n + j]);
+				}
+				printf("\n");
+			}
+		}
+		MPI_Barrier(MPI_COMM_WORLD);
+	}
     // Compute the size of the local matrices
 	int bsxA = n; //blocksize in X direction
-	int bsyA = n; //blocksize in Y direction
+	int bsyA = n/nprow; //blocksize in Y direction
 	
 	int numcA = numroc_( &n, &bsxA, &mycol, &zero, &npcol ); // number of columns stored in each process
 	int numrA = numroc_( &n, &bsyA, &myrow, &zero, &nprow ); // number of rows stored in each process
@@ -81,7 +137,7 @@ int main(int argc, char** argv){
 	int lddA = numcA > 1? numcA : 1;
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	if (process_rank == 0) printf("I am process %d, \tnumrA = %d, numcA = %d, bsyA = %d, bsxA = %d\n", process_rank, numrA, numcA, bsyA, bsxA);
+	if (process_rank == 0) printf("I am process %d, \tnumrA = %d, numcA = %d, \tbsyA = %d, bsxA = %d, \tlddA = %d\n", process_rank, numrA, numcA, bsyA, bsxA, lddA);
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	descinit_( descA,  &n, &n, &bsyA, &bsxA, &zero, &zero, &ictxt, &lddA, &info);
@@ -95,12 +151,11 @@ int main(int argc, char** argv){
 	MPI_Barrier(MPI_COMM_WORLD);
 
 
-
 	//create a desriptor for B
 	
     // Compute the size of the local matrices
 	int bsxB = 1; //blocksize in X direction
-	int bsyB = n; //blocksize in Y direction
+	int bsyB = n/nprow; //blocksize in Y direction
 	
 	int numcB = numroc_( &one, &bsxB, &mycol, &zero, &npcol ); // number of columns stored in each process
 	int numrB = numroc_( &n, &bsyB, &myrow, &zero, &nprow ); // number of rows stored in each process
@@ -112,7 +167,7 @@ int main(int argc, char** argv){
 
 	
 	MPI_Barrier(MPI_COMM_WORLD);
-	if (process_rank == 0) printf("I am process %d, \tnumrB = %d, numcB = %d, bsyB = %d, bsxB = %d, \tlddB = %d\n", process_rank, numrB, numcB, bsyB, bsxB, lddB);
+	if (process_rank == 0) printf("I am process %d, \tnumrB = %d, numcB = %d, \tbsyB = %d, bsxB = %d, \tlddB = %d\n", process_rank, numrB, numcB, bsyB, bsxB, lddB);
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 //DESCB =            1           0           4           1           4           1           0           0           4
@@ -131,7 +186,6 @@ int main(int argc, char** argv){
 	if (process_rank == 0) printf("Descriptor B done!\n");
 	MPI_Barrier(MPI_COMM_WORLD);
 	
-
 	//timing
 	double t0;
 
@@ -140,16 +194,17 @@ int main(int argc, char** argv){
 	t0 = MPI_Wtime();
 
 	int nrhs = numcB;	//1;
-	int ia = 0 +1;
+	int ia = (myrow * 2) + 1 ;
 	int ja = 0 +1; // = 0;
-	int ib = 0 +1;
+	int ib = (myrow *2 )+1;
 	int jb = 0 +1;	// = 0;
 	
 	if (process_rank == 0) printf("Starting PDGESV....\n");
 	MPI_Barrier(MPI_COMM_WORLD);
-	if (process_rank == 0) printf("I am process %d, \tia = %d, ja = %d,\tiB = %d, jB = %d\n", process_rank, ia, ja, ib, jb);
-	MPI_Barrier(MPI_COMM_WORLD);
-	
+	for (k = 0; k < nprow*npcol; k++){
+		if (process_rank == k) printf("I am process %d, \tia = %d, ja = %d,\tiB = %d, jB = %d\n", process_rank, ia, ja, ib, jb);
+		MPI_Barrier(MPI_COMM_WORLD);
+	}
 
 	//PDGESV( N, NRHS, A, IA, JA, DESCA, IPIV, B, IB, JB, DESCB, INFO )
 	//if (process_rank == 0) printf("n = %d, ipiv: [%d, %d, %d, %d]\n", n, ipiv[0], ipiv[1], ipiv[2], ipiv[3]);
