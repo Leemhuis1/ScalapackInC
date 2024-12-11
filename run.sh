@@ -1,1 +1,1 @@
-mpirun -n 4 large_matrix
+mpirun -n 4 hello_world 

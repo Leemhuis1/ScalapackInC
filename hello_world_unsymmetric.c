@@ -27,7 +27,7 @@ int main(int argc, char** argv){
 	MPI_Comm_rank(MPI_COMM_WORLD, &process_rank);
 
 
-	int n = 6;       // (Global) Matrix size
+	int n = 12;       // (Global) Matrix size
 	int m = n;
 	int nrhs = 1;
 
@@ -48,8 +48,8 @@ int main(int argc, char** argv){
 	blacs_gridinfo_(&ictxt, &nprow, &npcol, &myrow, &mycol ); // Context -> Context grid info (# procs row/col, current procs row/col)
 
     // Block Sizes
-	int bsx = 2; //blocksize in X direction
-    	int bsy = 3; //blocksize in Y direction
+	int bsx = n/npcol; //blocksize in X direction
+    	int bsy = m/nprow; //blocksize in Y direction
     
     // Computing local matrix sizes
     	int numc = numroc_( &n, &bsx, &mycol, &zero, &npcol ); // number of columns stored in each process
@@ -71,43 +71,8 @@ int main(int argc, char** argv){
 	//**********************************************
 	//!!!! data storage column wise for FORTRAN !!!! 
 	//**********************************************
-
-	if (myrow == 0 && mycol == 0) {
-		printf("myrank: %d, numr: %d, numc:%d\n", process_rank, numr, numc);
-		A[0] = 1; A[3] = 1; A[ 6] = 1; A[ 9] = 1;
-		A[1] = 0; A[4] = 1; A[ 7] = 1; A[10] = 1;
-		A[2] = 0; A[5] = 0; A[ 8] = 1; A[11] = 1;
-	}
- 	sleep(0.05);
-        MPI_Barrier(MPI_COMM_WORLD); // Synchronize output
-	if (myrow == 0 && mycol == 1){
-		printf("myrank: %d, numr: %d, numc:%d\n", process_rank, numr, numc);
-		A[0] = 1; A[4] = 1;
-		A[1] = 1; A[5] = 1;
-		A[2] = 1; A[6] = 1;
-		A[3] = 1; A[7] = 1;
-	}
-	sleep(0.05);
-        MPI_Barrier(MPI_COMM_WORLD); // Synchronize output
-	if (myrow == 1 && mycol == 0){
-		printf("myrank: %d, numr: %d, numc:%d\n", process_rank, numr, numc);
-		A[0] = 0; A[3] = 0; A[6] = 1; A[ 9] = 1;
-		A[1] = 0; A[4] = 0; A[7] = 1; A[10] = 1;
-		A[2] = 0; A[5] = 0; A[8] = 0; A[11] = 1;
-	}
-	sleep(0.05);
-        MPI_Barrier(MPI_COMM_WORLD); // Synchronize output
-	if (myrow == 1 && mycol == 1){
-		printf("myrank: %d, numr: %d, numc:%d\n", process_rank, numr, numc);
-		A[0] = 0; A[3] = 1;
-		A[1] = 0; A[4] = 0;
-		A[2] = 0; A[5] = 0;
-	}
-
-	sleep(0.05);
-        MPI_Barrier(MPI_COMM_WORLD); // Synchronize output
-
-/*
+		
+	
 	if (myrow == mycol) { //"I am a process on the diagonal on the process grid"
 		for (int j = 0; j < numc; j++)
 			for (int i = 0; i < numr; i++)
@@ -117,31 +82,18 @@ int main(int argc, char** argv){
 	} else if( myrow < mycol) { // "I am a process above the diagonal on the process grid"
 		for (int i = 0; i < numc * numr; i++) A[i] = 1; //setting everthing to 1
        	}
-*/
-
-
 
 	//setting local B //only on first process row
-	if (mycol == 0 && myrow == 0){
-		B[0] = 6;
-		B[1] = 5;
-		B[2] = 4;
-	} else if (mycol == 0 && myrow == 1){
-		B[0] = 3;
-		B[1] = 2;
-		B[2] = 1;
-	}
-	/*
-	if (mycol == 0)
+	if (mycol == 0) 
 		for (int i = 0; i < numr; i++)
 			B[i] = m - numr*myrow - i;
-*/
+
 
 	//printing B
 	for (int i = 0; i < size_of_cluster; i++) {
         	if (process_rank == i && mycol == 0) { //only on first process column
             		for (int j = 0; j< numr; j++){
-                		printf("rank %d \t B[%d] = %f \n", process_rank, j, B[j]);
+                		printf("rank %d \t B[j] = %f \n", process_rank,  B[j]);
 		                fflush(stdout);
             		}
 	        }
@@ -183,7 +135,7 @@ int main(int argc, char** argv){
 	}
 	
 
-	descinit_( descB, &m, &nrhs, &bsy, &one, &zero, &zero, &ictxt, &lddB, &info);
+	descinit_( descB, &m, &nrhs, &bsx, &one, &zero, &zero, &ictxt, &lddB, &info);
 	if(info != 0) {
 		printf("Error in descinit B, info = %d\n", info);
 		exit(1);
@@ -213,7 +165,7 @@ int main(int argc, char** argv){
     	for (int i = 0; i < size_of_cluster; i = i+2) {
         	if (process_rank == i) {
             		for (int j = 0; j< numr; j++){
-                		printf("rank %d \t B[%d] = %e \n", process_rank, j, B[j]);
+                		printf("rank %d \t B[j] = %e \n", process_rank,  B[j]);
                 		fflush(stdout);
             		}
         	}

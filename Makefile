@@ -17,10 +17,13 @@ LIBS = -lm -ldl -lgfortran $(LAPACKLIB) $(BLASLIB) -lscalapack
 
 CDEFS = -DAdd_
 
-all: hello_world large_matrix
+all: hello_world large_matrix reprod_example
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CDEFS) $(CFLAGS) $(SCALAPACKLIB)
+
+reprod_example: reprod_example.o #$(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS) $(SCALAPACKLIB) $(LIBS)
 
 large_matrix: large_matrix.o #$(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(SCALAPACKLIB) $(LIBS)

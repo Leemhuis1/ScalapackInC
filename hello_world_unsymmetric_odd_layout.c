@@ -49,7 +49,7 @@ int main(int argc, char** argv){
 
     // Block Sizes
 	int bsx = 2; //blocksize in X direction
-    	int bsy = 3; //blocksize in Y direction
+    	int bsy = 2; //blocksize in Y direction
     
     // Computing local matrix sizes
     	int numc = numroc_( &n, &bsx, &mycol, &zero, &npcol ); // number of columns stored in each process
@@ -74,9 +74,11 @@ int main(int argc, char** argv){
 
 	if (myrow == 0 && mycol == 0) {
 		printf("myrank: %d, numr: %d, numc:%d\n", process_rank, numr, numc);
-		A[0] = 1; A[3] = 1; A[ 6] = 1; A[ 9] = 1;
-		A[1] = 0; A[4] = 1; A[ 7] = 1; A[10] = 1;
-		A[2] = 0; A[5] = 0; A[ 8] = 1; A[11] = 1;
+		for (int j = 0; j < numc; j++){
+			for (int i = 0; i < numr; i++){
+				A[j * numr + i] = i > j? 0:1;
+			}
+		}	
 	}
  	sleep(0.05);
         MPI_Barrier(MPI_COMM_WORLD); // Synchronize output
@@ -84,24 +86,22 @@ int main(int argc, char** argv){
 		printf("myrank: %d, numr: %d, numc:%d\n", process_rank, numr, numc);
 		A[0] = 1; A[4] = 1;
 		A[1] = 1; A[5] = 1;
-		A[2] = 1; A[6] = 1;
-		A[3] = 1; A[7] = 1;
+		A[2] = 0; A[6] = 0;
+		A[3] = 0; A[7] = 0;
 	}
 	sleep(0.05);
         MPI_Barrier(MPI_COMM_WORLD); // Synchronize output
 	if (myrow == 1 && mycol == 0){
 		printf("myrank: %d, numr: %d, numc:%d\n", process_rank, numr, numc);
-		A[0] = 0; A[3] = 0; A[6] = 1; A[ 9] = 1;
-		A[1] = 0; A[4] = 0; A[7] = 1; A[10] = 1;
-		A[2] = 0; A[5] = 0; A[8] = 0; A[11] = 1;
+		A[0] = 0; A[2] = 0; A[4] = 1; A[6] = 1;
+		A[1] = 0; A[3] = 0; A[5] = 1; A[7] = 1;
 	}
 	sleep(0.05);
         MPI_Barrier(MPI_COMM_WORLD); // Synchronize output
 	if (myrow == 1 && mycol == 1){
 		printf("myrank: %d, numr: %d, numc:%d\n", process_rank, numr, numc);
-		A[0] = 0; A[3] = 1;
-		A[1] = 0; A[4] = 0;
-		A[2] = 0; A[5] = 0;
+		A[0] = 1; A[2] = 1; 
+		A[1] = 0; A[3] = 1;
 	}
 
 	sleep(0.05);
@@ -125,11 +125,11 @@ int main(int argc, char** argv){
 	if (mycol == 0 && myrow == 0){
 		B[0] = 6;
 		B[1] = 5;
-		B[2] = 4;
+		B[2] = 2;
+		B[3] = 1;
 	} else if (mycol == 0 && myrow == 1){
-		B[0] = 3;
-		B[1] = 2;
-		B[2] = 1;
+		B[0] = 4;
+		B[1] = 3;
 	}
 	/*
 	if (mycol == 0)
@@ -183,7 +183,7 @@ int main(int argc, char** argv){
 	}
 	
 
-	descinit_( descB, &m, &nrhs, &bsy, &one, &zero, &zero, &ictxt, &lddB, &info);
+	descinit_( descB, &m, &nrhs, &bsx, &one, &zero, &zero, &ictxt, &lddB, &info);
 	if(info != 0) {
 		printf("Error in descinit B, info = %d\n", info);
 		exit(1);
